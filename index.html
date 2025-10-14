@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Tools - OBS Widgets</title>
+    <style>
+        body {
+            color: #eee;
+            background: #1a1a1a;
+            font-family: DiatypeRounded, BlinkMacSystemFont, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #999;
+            margin-bottom: 40px;
+        }
+        .widget-list {
+            list-style: none;
+            padding: 0;
+        }
+        .widget-item {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+        .widget-item:hover {
+            border-color: #4CAF50;
+        }
+        .widget-item h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .widget-item h2 a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .widget-item h2 a:hover {
+            text-decoration: underline;
+        }
+        .widget-description {
+            color: #bbb;
+            margin-bottom: 15px;
+        }
+        .widget-features {
+            color: #999;
+            font-size: 0.9em;
+        }
+        .widget-features li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stream Tools</h1>
+        <p class="subtitle">Customizable web widgets for OBS Browser Sources</p>
+
+        <ul class="widget-list">
+            <li class="widget-item">
+                <h2><a href="./current-price.html">Current Price Widget</a></h2>
+                <p class="widget-description">
+                    Real-time cryptocurrency price tracker with live market cap and 24-hour change percentage.
+                    Updates automatically every 5 seconds.
+                </p>
+                <ul class="widget-features">
+                    <li>✓ Fully customizable colors, font size, and transparency</li>
+                    <li>✓ Tracks any token on Base (Chain ID: 8453)</li>
+                    <li>✓ Click-to-edit settings interface</li>
+                    <li>✓ Generate shareable widget URLs</li>
+                    <li>✓ OBS-ready with transparent background support</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

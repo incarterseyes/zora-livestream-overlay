@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream View</title>
+    <title>Zora Coin OBS Overlay</title>
     <style>
         body {
             color: #eee;
@@ -95,7 +95,11 @@
 <body>
     <div class="modal-overlay" id="modalOverlay"></div>
     <div class="modal" id="settingsModal">
-        <h2>Widget Settings</h2>
+        <h2>Configure Zora Coin OBS Price Tracker Overlay</h2>
+        <div class="form-group">
+            <label>Coin Address:</label>
+            <input type="text" id="coinAddress" value="0xfe9ede4478ad200a2186175a81f9ce9f0e679270">
+        </div>
         <div class="form-group">
             <label>Font Size (px):</label>
             <input type="number" id="fontSize" value="16">
@@ -113,14 +117,6 @@
             <input type="range" id="bgOpacity" min="0" max="100" value="100">
             <span id="opacityValue">100%</span>
         </div>
-        <div class="form-group">
-            <label>Coin Address:</label>
-            <input type="text" id="coinAddress" value="0xfe9ede4478ad200a2186175a81f9ce9f0e679270">
-        </div>
-        <div class="form-group">
-            <label>Chain ID:</label>
-            <input type="text" id="chainId" value="8453">
-        </div>
         <div class="button-group">
             <button onclick="copyWidgetURL()">Copy Widget URL</button>
             <button class="secondary" onclick="stopEditing()">Preview</button>
@@ -131,13 +127,14 @@
 
     <script>
         // Default settings
+        const CHAIN_ID = '8453'; // Base chain, hardcoded
+
         let settings = {
             fontSize: 16,
             fgColor: '#eeeeee',
             bgColor: '#000000',
             bgOpacity: 100,
-            coinAddress: '0xfe9ede4478ad200a2186175a81f9ce9f0e679270',
-            chainId: '8453'
+            coinAddress: '0xfe9ede4478ad200a2186175a81f9ce9f0e679270'
         };
 
         // Parse URL hash parameters
@@ -153,7 +150,6 @@
             if (params.has('bgColor')) parsed.bgColor = '#' + params.get('bgColor').replace('#', '');
             if (params.has('bgOpacity')) parsed.bgOpacity = params.get('bgOpacity');
             if (params.has('coinAddress')) parsed.coinAddress = params.get('coinAddress');
-            if (params.has('chainId')) parsed.chainId = params.get('chainId');
 
             return Object.keys(parsed).length > 0 ? parsed : null;
         }
@@ -181,7 +177,6 @@
             params.set('bgColor', settings.bgColor.replace('#', ''));
             params.set('bgOpacity', settings.bgOpacity);
             params.set('coinAddress', settings.coinAddress);
-            params.set('chainId', settings.chainId);
 
             return window.location.origin + window.location.pathname + '#?' + params.toString();
         }
@@ -198,7 +193,6 @@
             document.getElementById('bgOpacity').value = settings.bgOpacity;
             document.getElementById('opacityValue').textContent = settings.bgOpacity + '%';
             document.getElementById('coinAddress').value = settings.coinAddress;
-            document.getElementById('chainId').value = settings.chainId;
         }
 
         // Update opacity value display when slider changes
@@ -223,7 +217,6 @@
             settings.bgColor = document.getElementById('bgColor').value;
             settings.bgOpacity = document.getElementById('bgOpacity').value;
             settings.coinAddress = document.getElementById('coinAddress').value;
-            settings.chainId = document.getElementById('chainId').value;
 
             applySettings();
             window.location.hash = '#?' + new URLSearchParams({
@@ -231,8 +224,7 @@
                 fgColor: settings.fgColor.replace('#', ''),
                 bgColor: settings.bgColor.replace('#', ''),
                 bgOpacity: settings.bgOpacity,
-                coinAddress: settings.coinAddress,
-                chainId: settings.chainId
+                coinAddress: settings.coinAddress
             }).toString();
 
             hideModal();
@@ -246,7 +238,6 @@
             settings.bgColor = document.getElementById('bgColor').value;
             settings.bgOpacity = document.getElementById('bgOpacity').value;
             settings.coinAddress = document.getElementById('coinAddress').value;
-            settings.chainId = document.getElementById('chainId').value;
 
             const url = generateWidgetURL();
             navigator.clipboard.writeText(url).then(() => {
@@ -307,7 +298,7 @@
         }
 
         const fetchData = async () => {
-            const response = await fetch(`https://api-sdk.zora.engineering/coin?address=${settings.coinAddress}&chain=${settings.chainId}`);
+            const response = await fetch(`https://api-sdk.zora.engineering/coin?address=${settings.coinAddress}&chain=${CHAIN_ID}`);
             const data = await response.json();
 
             document.getElementById('hdr-symbol').innerHTML = `$${data.zora20Token.symbol}`;
