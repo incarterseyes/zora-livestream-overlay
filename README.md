@@ -70,7 +70,7 @@ A real-time Zora livestream chat overlay that displays viewer messages with user
 ### Why Use This?
 
 - **Real-Time Chat**: Live WebSocket connection to Zora livestream chat via GraphQL
-- **Easy Setup**: Enter your Zora username and the overlay automatically finds your stream
+- **Easy Setup**: Enter your Zora username (auto-lookup) or livestream ID (manual entry)
 - **Customizable**: Adjust colors, font size, message count, and fade duration
 - **Smooth Animations**: Messages fade in and out smoothly with configurable timing
 - **Avatar Support**: Optional user avatars displayed alongside messages
@@ -84,7 +84,8 @@ A real-time Zora livestream chat overlay that displays viewer messages with user
 1. Open `chat.html` in your browser
 2. The settings modal will appear automatically on first load
 3. Enter your settings:
-   - **Zora Username**: Enter your username (e.g., "carter") - the widget will automatically find your livestream
+   - **Zora Username**: Enter your username (e.g., "carter") - automatically fetches your livestream ID
+   - **OR Livestream ID**: Enter your livestream ID manually (if username lookup doesn't work)
    - **Font Size**: Adjust text size (12-32px)
    - **Max Messages Displayed**: How many messages to show at once (5-50)
    - **Fade Duration**: How long before messages fade out (20s - 10 minutes)
@@ -138,7 +139,9 @@ A real-time Zora livestream chat overlay that displays viewer messages with user
 
 ### Tips
 
-- **Easy setup**: Just enter your Zora username - widget automatically finds your livestream!
+- **Two ways to connect**: Use your username for automatic lookup, or enter livestream ID manually
+- Username lookup works when served via web server (like GitHub Pages)
+- For local testing, enter your livestream ID directly to avoid CORS issues
 - Test the widget URL in your browser before adding to OBS
 - Adjust fade duration based on chat activity (longer for slow chats, shorter for busy ones)
 - Position the overlay where it won't cover important stream content
@@ -148,9 +151,15 @@ A real-time Zora livestream chat overlay that displays viewer messages with user
 ### Troubleshooting
 
 **Chat not connecting:**
-- Verify your username is spelled correctly
+- If username lookup fails, try entering your livestream ID manually
+- Verify your username is spelled correctly or livestream ID is correct
 - Make sure you have an active livestream on Zora
 - Check browser console for error messages
+
+**"Cannot fetch stream ID" error:**
+- This happens when testing locally (CORS restriction)
+- Solution: Enter your livestream ID manually instead of username
+- When deployed (GitHub Pages), username lookup will work fine
 
 **Messages not appearing:**
 - Refresh the page to reconnect

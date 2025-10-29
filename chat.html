@@ -209,9 +209,17 @@
       <h2>Zora Chat Overlay Settings</h2>
 
       <div class="form-group">
-        <label for="username">Zora Username *</label>
-        <input type="text" id="username" placeholder="e.g., carter" required>
-        <small style="color: #999; display: block; margin-top: 5px;">Your Zora username - we'll automatically find your livestream</small>
+        <label for="username">Zora Username</label>
+        <input type="text" id="username" placeholder="e.g., carter">
+        <small style="color: #999; display: block; margin-top: 5px;">We'll automatically fetch your livestream ID</small>
+      </div>
+
+      <div style="text-align: center; margin: 15px 0; color: #666; font-size: 14px;">— OR —</div>
+
+      <div class="form-group">
+        <label for="liveStreamId">Livestream ID</label>
+        <input type="text" id="liveStreamId" placeholder="e.g., 68ee68a8ee5b6873a67faf75">
+        <small style="color: #999; display: block; margin-top: 5px;">Enter manually if username lookup doesn't work</small>
       </div>
 
       <div class="form-group">
@@ -379,6 +387,7 @@
     // Settings object
     const settings = {
       username: '',
+      liveStreamId: '',
       fontSize: 16,
       maxMessages: 10,
       fadeDuration: 60,
@@ -405,8 +414,16 @@
       loadSettingsFromURL();
       setupEventListeners();
 
-      // If username provided in URL, fetch stream ID and connect
-      if (settings.username) {
+      // Try to get stream ID from either username or manual entry
+      if (settings.liveStreamId) {
+        // Manual stream ID provided in URL
+        currentLiveStreamId = settings.liveStreamId;
+        settingsModal.style.display = 'none';
+        applyStyles();
+        connectToChat();
+        return;
+      } else if (settings.username) {
+        // Username provided in URL, try to fetch stream ID
         try {
           const streamId = await fetchStreamIdFromUsername(settings.username);
           if (streamId) {
@@ -421,7 +438,7 @@
         }
       }
 
-      // Show settings modal if no username or fetch failed
+      // Show settings modal if no valid stream ID
       settingsModal.style.display = 'flex';
     }
 
@@ -433,6 +450,7 @@
       const params = new URLSearchParams(hash.substring(1)); // Remove '?' from hash
 
       settings.username = params.get('username') || '';
+      settings.liveStreamId = params.get('liveStreamId') || '';
       settings.fontSize = parseInt(params.get('fontSize')) || 16;
       settings.maxMessages = parseInt(params.get('maxMessages')) || 10;
       settings.fadeDuration = parseInt(params.get('fadeDuration')) || 60;
@@ -442,7 +460,8 @@
     // Save settings to URL hash
     function saveSettingsToURL() {
       const params = new URLSearchParams();
-      params.set('username', settings.username);
+      if (settings.username) params.set('username', settings.username);
+      if (settings.liveStreamId) params.set('liveStreamId', settings.liveStreamId);
       params.set('fontSize', settings.fontSize);
       params.set('maxMessages', settings.maxMessages);
       params.set('fadeDuration', settings.fadeDuration);
@@ -478,6 +497,7 @@
 
       // Populate form with current settings
       document.getElementById('username').value = settings.username;
+      document.getElementById('liveStreamId').value = settings.liveStreamId;
       document.getElementById('fontSize').value = settings.fontSize;
       document.getElementById('maxMessages').value = settings.maxMessages;
       document.getElementById('fadeDuration').value = settings.fadeDuration;
@@ -534,34 +554,41 @@
     async function applySettings() {
       // Get values from form
       settings.username = document.getElementById('username').value.trim();
+      settings.liveStreamId = document.getElementById('liveStreamId').value.trim();
       settings.fontSize = parseInt(document.getElementById('fontSize').value);
       settings.maxMessages = parseInt(document.getElementById('maxMessages').value);
       settings.fadeDuration = parseInt(document.getElementById('fadeDuration').value);
       settings.showAvatars = document.getElementById('showAvatars').checked;
 
-      if (!settings.username) {
-        alert('Please enter your Zora username');
+      // Need at least username or stream ID
+      if (!settings.username && !settings.liveStreamId) {
+        alert('Please enter either your Zora username or livestream ID');
         return;
       }
 
-      // Fetch stream ID from username
-      try {
-        const streamId = await fetchStreamIdFromUsername(settings.username);
-        if (streamId) {
-          currentLiveStreamId = streamId;
-        } else {
-          alert('Could not find livestream for username: ' + settings.username + '\n\nMake sure:\n1. Your username is correct\n2. You have an active livestream on Zora');
+      // Try to fetch stream ID from username if provided
+      if (settings.username && !settings.liveStreamId) {
+        try {
+          const streamId = await fetchStreamIdFromUsername(settings.username);
+          if (streamId) {
+            currentLiveStreamId = streamId;
+          } else {
+            alert('Could not find livestream for username: ' + settings.username + '\n\nPlease enter your Livestream ID manually below.');
+            return;
+          }
+        } catch (error) {
+          console.error('Error fetching stream ID:', error);
+
+          if (error.message === 'CORS_ERROR') {
+            alert('Cannot fetch stream ID when opening file directly.\n\nPlease enter your Livestream ID manually in the field below.');
+          } else {
+            alert('Error fetching livestream ID. Please enter it manually below.');
+          }
           return;
         }
-      } catch (error) {
-        console.error('Error fetching stream ID:', error);
-
-        if (error.message === 'CORS_ERROR') {
-          alert('Cannot fetch stream ID when opening file directly.\n\nPlease run a local web server to test:\npython3 -m http.server 8000\n\nSee README for more details.');
-        } else {
-          alert('Error fetching livestream ID. Please check your username and try again.');
-        }
-        return;
+      } else {
+        // Use manual stream ID
+        currentLiveStreamId = settings.liveStreamId;
       }
 
       // Save to URL
