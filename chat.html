@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zora Chat Overlay</title>
+  <style>
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #chat-container {
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    #messages {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    .message {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 2px 0;
+      opacity: 1;
+      transition: opacity 0.5s ease-out;
+      word-wrap: break-word;
+      max-width: 100%;
+      color: white;
+      text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        -2px 0 0 #000,
+        2px 0 0 #000,
+        0 -2px 0 #000,
+        0 2px 0 #000;
+    }
+
+    .message.fading {
+      opacity: 0;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      object-fit: cover;
+    }
+
+    .message-content {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .username {
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .comment {
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+
+    /* Modal styles */
+    #settings-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #1a1a1a;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      color: #eeeeee;
+    }
+
+    .modal-content h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #cccccc;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: #eeeeee;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .form-group input[type="range"] {
+      padding: 0;
+    }
+
+    .range-value {
+      display: inline-block;
+      margin-left: 10px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      background: #0066ff;
+      color: white;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #0052cc;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .button-group button {
+      flex: 1;
+    }
+
+    .secondary-button {
+      background: #333;
+    }
+
+    .secondary-button:hover {
+      background: #444;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="messages"></div>
+  </div>
+
+  <div id="settings-modal">
+    <div class="modal-content">
+      <h2>Zora Chat Overlay Settings</h2>
+
+      <div class="form-group">
+        <label for="username">Zora Username *</label>
+        <input type="text" id="username" placeholder="e.g., carter" required>
+        <small style="color: #999; display: block; margin-top: 5px;">Your Zora username - we'll automatically find your livestream</small>
+      </div>
+
+      <div class="form-group">
+        <label for="fontSize">
+          Font Size
+          <span class="range-value" id="fontSizeValue">16px</span>
+        </label>
+        <input type="range" id="fontSize" min="12" max="32" value="16">
+      </div>
+
+      <div class="form-group">
+        <label for="maxMessages">
+          Max Messages Displayed
+          <span class="range-value" id="maxMessagesValue">10</span>
+        </label>
+        <input type="range" id="maxMessages" min="5" max="50" value="10">
+      </div>
+
+      <div class="form-group">
+        <label for="fadeDuration">
+          Fade Duration (seconds)
+          <span class="range-value" id="fadeDurationValue">60s</span>
+        </label>
+        <input type="range" id="fadeDuration" min="20" max="600" value="60">
+      </div>
+
+      <div class="form-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="showAvatars" checked>
+          <label for="showAvatars" style="margin: 0;">Show Avatars</label>
+        </div>
+      </div>
+
+      <button id="applySettingsBtn">Apply Settings</button>
+      <div class="button-group">
+        <button class="secondary-button" id="copyWidgetBtn">Copy Widget URL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple GraphQL WebSocket client implementation
+    class GraphQLWebSocketClient {
+      constructor(url) {
+        this.url = url;
+        this.ws = null;
+        this.subscriptions = new Map();
+        this.nextId = 1;
+        this.connectionInitialized = false;
+        this.keepAliveInterval = null;
+      }
+
+      connect() {
+        return new Promise((resolve, reject) => {
+          this.ws = new WebSocket(this.url, 'graphql-transport-ws');
+
+          this.ws.onopen = () => {
+            // Send connection init message
+            this.send({ type: 'connection_init' });
+          };
+
+          this.ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            switch (message.type) {
+              case 'connection_ack':
+                this.connectionInitialized = true;
+                // Start keep-alive
+                this.keepAliveInterval = setInterval(() => {
+                  if (this.ws.readyState === WebSocket.OPEN) {
+                    this.send({ type: 'ping' });
+                  }
+                }, 10000);
+                resolve();
+                break;
+
+              case 'next':
+                const subscription = this.subscriptions.get(message.id);
+                if (subscription && subscription.onNext) {
+                  subscription.onNext(message.payload);
+                }
+                break;
+
+              case 'error':
+                const errorSub = this.subscriptions.get(message.id);
+                if (errorSub && errorSub.onError) {
+                  errorSub.onError(message.payload);
+                }
+                break;
+
+              case 'complete':
+                const completeSub = this.subscriptions.get(message.id);
+                if (completeSub && completeSub.onComplete) {
+                  completeSub.onComplete();
+                }
+                this.subscriptions.delete(message.id);
+                break;
+
+              case 'pong':
+                // Keep-alive response
+                break;
+            }
+          };
+
+          this.ws.onerror = (error) => {
+            reject(error);
+          };
+
+          this.ws.onclose = () => {
+            if (this.keepAliveInterval) {
+              clearInterval(this.keepAliveInterval);
+            }
+            // Notify all subscriptions of closure
+            this.subscriptions.forEach(sub => {
+              if (sub.onComplete) {
+                sub.onComplete();
+              }
+            });
+            this.subscriptions.clear();
+            this.connectionInitialized = false;
+          };
+        });
+      }
+
+      send(message) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify(message));
+        }
+      }
+
+      subscribe(query, variables, handlers) {
+        const id = String(this.nextId++);
+
+        this.subscriptions.set(id, handlers);
+
+        this.send({
+          id,
+          type: 'subscribe',
+          payload: {
+            query,
+            variables
+          }
+        });
+
+        // Return unsubscribe function
+        return () => {
+          this.send({
+            id,
+            type: 'complete'
+          });
+          this.subscriptions.delete(id);
+        };
+      }
+
+      close() {
+        if (this.keepAliveInterval) {
+          clearInterval(this.keepAliveInterval);
+        }
+        if (this.ws) {
+          this.ws.close();
+        }
+      }
+    }
+
+    // Settings object
+    const settings = {
+      username: '',
+      fontSize: 16,
+      maxMessages: 10,
+      fadeDuration: 60,
+      showAvatars: true
+    };
+
+    // Internal state (not saved to URL)
+    let currentLiveStreamId = '';
+
+    // Chat state
+    let client = null;
+    let unsubscribe = null;
+    let messages = [];
+    let reconnectTimeout = null;
+    let shouldReconnect = true;
+
+    // DOM elements
+    const chatContainer = document.getElementById('chat-container');
+    const messagesContainer = document.getElementById('messages');
+    const settingsModal = document.getElementById('settings-modal');
+
+    // Initialize
+    async function init() {
+      loadSettingsFromURL();
+      setupEventListeners();
+
+      // If username provided in URL, fetch stream ID and connect
+      if (settings.username) {
+        try {
+          const streamId = await fetchStreamIdFromUsername(settings.username);
+          if (streamId) {
+            currentLiveStreamId = streamId;
+            settingsModal.style.display = 'none';
+            applyStyles();
+            connectToChat();
+            return;
+          }
+        } catch (error) {
+          console.error('Error fetching stream ID on init:', error);
+        }
+      }
+
+      // Show settings modal if no username or fetch failed
+      settingsModal.style.display = 'flex';
+    }
+
+    // Load settings from URL hash
+    function loadSettingsFromURL() {
+      const hash = window.location.hash.substring(1);
+      if (!hash) return;
+
+      const params = new URLSearchParams(hash.substring(1)); // Remove '?' from hash
+
+      settings.username = params.get('username') || '';
+      settings.fontSize = parseInt(params.get('fontSize')) || 16;
+      settings.maxMessages = parseInt(params.get('maxMessages')) || 10;
+      settings.fadeDuration = parseInt(params.get('fadeDuration')) || 60;
+      settings.showAvatars = params.get('showAvatars') !== 'false';
+    }
+
+    // Save settings to URL hash
+    function saveSettingsToURL() {
+      const params = new URLSearchParams();
+      params.set('username', settings.username);
+      params.set('fontSize', settings.fontSize);
+      params.set('maxMessages', settings.maxMessages);
+      params.set('fadeDuration', settings.fadeDuration);
+      params.set('showAvatars', settings.showAvatars);
+
+      window.location.hash = '#?' + params.toString();
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+      // Click to open settings
+      chatContainer.addEventListener('click', (e) => {
+        if (e.target.closest('.message')) return;
+        settingsModal.style.display = 'flex';
+      });
+
+      // Button event listeners
+      document.getElementById('applySettingsBtn').addEventListener('click', applySettings);
+      document.getElementById('copyWidgetBtn').addEventListener('click', copyWidgetURL);
+
+      // Range input updates
+      document.getElementById('fontSize').addEventListener('input', (e) => {
+        document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
+      });
+
+      document.getElementById('maxMessages').addEventListener('input', (e) => {
+        document.getElementById('maxMessagesValue').textContent = e.target.value;
+      });
+
+      document.getElementById('fadeDuration').addEventListener('input', (e) => {
+        document.getElementById('fadeDurationValue').textContent = e.target.value + 's';
+      });
+
+      // Populate form with current settings
+      document.getElementById('username').value = settings.username;
+      document.getElementById('fontSize').value = settings.fontSize;
+      document.getElementById('maxMessages').value = settings.maxMessages;
+      document.getElementById('fadeDuration').value = settings.fadeDuration;
+      document.getElementById('showAvatars').checked = settings.showAvatars;
+
+      // Trigger initial display
+      document.getElementById('fontSizeValue').textContent = settings.fontSize + 'px';
+      document.getElementById('maxMessagesValue').textContent = settings.maxMessages;
+      document.getElementById('fadeDurationValue').textContent = settings.fadeDuration + 's';
+    }
+
+    // Fetch stream ID from username
+    async function fetchStreamIdFromUsername(username) {
+      const query = `
+        query getStreamIdFromUsername($username: String!) {
+          profile(identifier: $username) {
+            ... on GraphQLAccountProfile {
+              liveStream {
+                streamId
+              }
+            }
+          }
+        }
+      `;
+
+      try {
+        const response = await fetch('https://api.zora.co/universal/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            variables: { username }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data?.data?.profile?.liveStream?.streamId;
+      } catch (error) {
+        // Check if it's a CORS error
+        if (error.message === 'Failed to fetch') {
+          throw new Error('CORS_ERROR');
+        }
+        throw error;
+      }
+    }
+
+    // Apply settings
+    async function applySettings() {
+      // Get values from form
+      settings.username = document.getElementById('username').value.trim();
+      settings.fontSize = parseInt(document.getElementById('fontSize').value);
+      settings.maxMessages = parseInt(document.getElementById('maxMessages').value);
+      settings.fadeDuration = parseInt(document.getElementById('fadeDuration').value);
+      settings.showAvatars = document.getElementById('showAvatars').checked;
+
+      if (!settings.username) {
+        alert('Please enter your Zora username');
+        return;
+      }
+
+      // Fetch stream ID from username
+      try {
+        const streamId = await fetchStreamIdFromUsername(settings.username);
+        if (streamId) {
+          currentLiveStreamId = streamId;
+        } else {
+          alert('Could not find livestream for username: ' + settings.username + '\n\nMake sure:\n1. Your username is correct\n2. You have an active livestream on Zora');
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching stream ID:', error);
+
+        if (error.message === 'CORS_ERROR') {
+          alert('Cannot fetch stream ID when opening file directly.\n\nPlease run a local web server to test:\npython3 -m http.server 8000\n\nSee README for more details.');
+        } else {
+          alert('Error fetching livestream ID. Please check your username and try again.');
+        }
+        return;
+      }
+
+      // Save to URL
+      saveSettingsToURL();
+
+      // Apply styles
+      applyStyles();
+
+      // Hide modal
+      settingsModal.style.display = 'none';
+
+      // Reconnect to chat
+      disconnectFromChat();
+      messages = [];
+      messagesContainer.innerHTML = '';
+      connectToChat();
+    }
+
+    // Copy widget URL
+    function copyWidgetURL(event) {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.textContent = originalText;
+        }, 2000);
+      });
+    }
+
+    // Apply styles to chat
+    function applyStyles() {
+      chatContainer.style.fontSize = settings.fontSize + 'px';
+
+      // Update avatar visibility
+      document.querySelectorAll('.avatar').forEach(avatar => {
+        avatar.style.display = settings.showAvatars ? 'block' : 'none';
+      });
+    }
+
+    // Connect to chat
+    async function connectToChat() {
+      try {
+        client = new GraphQLWebSocketClient('wss://api.zora.co/universal/graphql');
+        await client.connect();
+
+        const query = `
+          subscription OnLiveStreamComment($liveStreamId: String!) {
+            onLiveStreamComment(liveStreamId: $liveStreamId) {
+              add {
+                node {
+                  profile {
+                    handle
+                    avatar {
+                      small
+                    }
+                  }
+                  comment
+                  commentedAt
+                }
+              }
+            }
+          }
+        `;
+
+        unsubscribe = client.subscribe(
+          query,
+          { liveStreamId: currentLiveStreamId },
+          {
+            onNext: (data) => {
+              handleMessage(data);
+            },
+            onError: (error) => {
+              console.error('GraphQL subscription error:', error);
+
+              // Reconnect after 5 seconds
+              if (shouldReconnect) {
+                reconnectTimeout = setTimeout(() => {
+                  connectToChat();
+                }, 5000);
+              }
+            },
+            onComplete: () => {
+              console.log('Subscription completed (timeout after inactivity)');
+
+              // Resubscribe immediately (Zora backend pattern)
+              if (shouldReconnect) {
+                reconnectTimeout = setTimeout(() => {
+                  connectToChat();
+                }, 0);
+              }
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Failed to connect:', error);
+
+        // Retry after 5 seconds
+        if (shouldReconnect) {
+          reconnectTimeout = setTimeout(() => {
+            connectToChat();
+          }, 5000);
+        }
+      }
+    }
+
+    // Disconnect from chat
+    function disconnectFromChat() {
+      shouldReconnect = false;
+
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+
+      if (unsubscribe) {
+        unsubscribe();
+      }
+
+      if (client) {
+        client.close();
+      }
+
+      shouldReconnect = true;
+    }
+
+    // Handle incoming message
+    function handleMessage(payload) {
+      const adds = payload?.data?.onLiveStreamComment?.add;
+      if (!adds || adds.length === 0) return;
+
+      for (const item of adds) {
+        const commentData = item.node;
+        addMessage(commentData);
+      }
+    }
+
+    // Add message to display
+    function addMessage(commentData) {
+      // Create message object
+      const message = {
+        handle: commentData.profile.handle,
+        avatar: commentData.profile.avatar.small,
+        comment: commentData.comment,
+        timestamp: Date.now(),
+        element: null
+      };
+
+      // Create DOM element
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message';
+
+      if (settings.showAvatars) {
+        const avatarEl = document.createElement('img');
+        avatarEl.className = 'avatar';
+        avatarEl.src = message.avatar;
+        avatarEl.alt = message.handle;
+        messageEl.appendChild(avatarEl);
+      }
+
+      const contentEl = document.createElement('div');
+      contentEl.className = 'message-content';
+
+      const usernameEl = document.createElement('span');
+      usernameEl.className = 'username';
+      usernameEl.textContent = message.handle;
+
+      const commentEl = document.createElement('span');
+      commentEl.className = 'comment';
+      commentEl.textContent = message.comment;
+
+      contentEl.appendChild(usernameEl);
+      contentEl.appendChild(commentEl);
+      messageEl.appendChild(contentEl);
+
+      message.element = messageEl;
+
+      // Add to messages array
+      messages.push(message);
+
+      // Remove oldest message if exceeding max
+      if (messages.length > settings.maxMessages) {
+        const oldMessage = messages.shift();
+        if (oldMessage.element) {
+          oldMessage.element.remove();
+        }
+      }
+
+      // Add to DOM
+      messagesContainer.appendChild(messageEl);
+
+      // Scroll to bottom
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // Set fade-out timer
+      setTimeout(() => {
+        messageEl.classList.add('fading');
+        setTimeout(() => {
+          const index = messages.indexOf(message);
+          if (index > -1) {
+            messages.splice(index, 1);
+            messageEl.remove();
+          }
+        }, 500); // Wait for fade animation
+      }, settings.fadeDuration * 1000);
+    }
+
+    // Start the app
+    init();
+
+    // Cleanup on unload
+    window.addEventListener('beforeunload', () => {
+      disconnectFromChat();
+    });
+  </script>
+</body>
+</html>
