@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zora Chat Overlay</title>
+
+  <!-- Zorb color generation dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tinycolor2@1.6.0/dist/tinycolor-min.js"></script>
+
   <style>
 
     * {
@@ -81,6 +86,15 @@
     .username {
       font-weight: 700;
       flex-shrink: 0;
+      /* Override parent text-shadow that interferes with gradient */
+      text-shadow: none;
+      /* Drop shadow works better with gradient text */
+      filter:
+        drop-shadow(-1px -1px 2px rgba(0,0,0,0.9))
+        drop-shadow(1px -1px 2px rgba(0,0,0,0.9))
+        drop-shadow(-1px 1px 2px rgba(0,0,0,0.9))
+        drop-shadow(1px 1px 2px rgba(0,0,0,0.9))
+        drop-shadow(0px 0px 3px rgba(0,0,0,0.8));
     }
 
     .comment {
@@ -261,6 +275,163 @@
   </div>
 
   <script>
+    // ===== Zorb Color Generation Algorithm =====
+    // Ported from zorb-web-component/src/lib.ts
+
+    const linear = (p) => p;
+
+    const cubicInOut = (p) => {
+      const m = p - 1;
+      const t = p * 2;
+      if (t < 1) return p * t * t;
+      return 1 + m * m * m * 4;
+    };
+
+    const cubicIn = (p) => {
+      return p * p * p;
+    };
+
+    const quintIn = (p) => {
+      return p * p * p * p * p;
+    };
+
+    const bscale = (byte, max) => Math.round((byte / 255) * max);
+
+    // Util for keeping hue range in 0-360 positive
+    const clampHue = (h) => {
+      if (h >= 0) {
+        return h % 360.0;
+      } else {
+        return 360 + (h % 360);
+      }
+    };
+
+    // scale byte in range min and max
+    const bScaleRange = (byte, min, max) => {
+      return bscale(byte, max - min) + min;
+    };
+
+    const lerpHueFn = (optionNum, direction) => {
+      const option = optionNum % 4;
+      const multiplier = direction ? 1 : -1;
+      switch (option) {
+        case 0: {
+          return function (hue, pct) {
+            let endHue = hue + multiplier * 10;
+            return clampHue(linear(1.0 - pct) * hue + linear(pct) * endHue);
+          };
+        }
+        case 1: {
+          return function (hue, pct) {
+            let endHue = hue + multiplier * 30;
+            return clampHue(linear(1.0 - pct) * hue + linear(pct) * endHue);
+          };
+        }
+        case 2: {
+          return function (hue, pct) {
+            let endHue = hue + multiplier * 50;
+            let lerpPercent = cubicInOut(pct);
+            return clampHue(linear(1.0 - lerpPercent) * hue + lerpPercent * endHue);
+          };
+        }
+        case 3:
+        default: {
+          return function (hue, pct) {
+            let endHue = hue + multiplier * 60 * bscale(optionNum, 1.0) + 30;
+            let lerpPercent = cubicInOut(pct);
+            return clampHue((1.0 - lerpPercent) * hue + lerpPercent * endHue);
+          };
+        }
+      }
+    };
+
+    const lerpLightnessFn = (optionNum) => {
+      switch (optionNum) {
+        case 0: {
+          return function (start, end, pct) {
+            let lerpPercent = quintIn(pct);
+            return (1.0 - lerpPercent) * start + lerpPercent * end;
+          };
+        }
+        case 1:
+        default: {
+          return function (start, end, pct) {
+            let lerpPercent = cubicIn(pct);
+            return (1.0 - lerpPercent) * start + lerpPercent * end;
+          };
+        }
+      }
+    };
+
+    const lerpSaturationFn = (optionNum) => {
+      switch (optionNum) {
+        case 0: {
+          return function (start, end, pct) {
+            let lerpPercent = quintIn(pct);
+            return (1.0 - lerpPercent) * start + lerpPercent * end;
+          };
+        }
+        case 1:
+        default: {
+          return function (start, end, pct) {
+            let lerpPercent = linear(pct);
+            return (1.0 - lerpPercent) * start + lerpPercent * end;
+          };
+        }
+      }
+    };
+
+    const gradientForAddress = (address) => {
+      // Use ethers.utils.arrayify from the CDN-loaded library
+      const bytes = ethers.utils.arrayify(address).reverse();
+      const hueShiftFn = lerpHueFn(bytes[3], bytes[6] % 2);
+      const startHue = bscale(bytes[12], 360);
+      const startLightness = bScaleRange(bytes[2], 32, 69.5);
+      const endLightness = (97 + bScaleRange(bytes[8], 72, 97)) / 2;
+      let startSaturation = bScaleRange(bytes[7], 81, 97);
+      let endSaturation = Math.min(
+        startSaturation - 10,
+        bScaleRange(bytes[10], 70, 92)
+      );
+
+      const lightnessShiftFn = lerpLightnessFn(bytes[5] % 2);
+      const saturationShiftFn = lerpSaturationFn(bytes[3] % 2);
+      const inputs = [
+        {
+          h: hueShiftFn(startHue, 0),
+          s: saturationShiftFn(startSaturation, endSaturation, 1),
+          l: lightnessShiftFn(startLightness, endLightness, 1)
+        },
+        {
+          h: hueShiftFn(startHue, 0.1),
+          s: saturationShiftFn(startSaturation, endSaturation, 0.9),
+          l: lightnessShiftFn(startLightness, endLightness, 0.9)
+        },
+        {
+          h: hueShiftFn(startHue, 0.7),
+          s: saturationShiftFn(startSaturation, endSaturation, 0.7),
+          l: lightnessShiftFn(startLightness, endLightness, 0.7)
+        },
+        {
+          h: hueShiftFn(startHue, 0.9),
+          s: saturationShiftFn(startSaturation, endSaturation, 0.2),
+          l: lightnessShiftFn(startLightness, endLightness, 0.2)
+        },
+        {
+          h: hueShiftFn(startHue, 1),
+          s: saturationShiftFn(startSaturation, endSaturation, 0),
+          l: startLightness
+        }
+      ];
+
+      // Use tinycolor from the CDN-loaded library
+      return inputs
+        .map((c) => tinycolor(c))
+        .map((tc) => tc.toHslString());
+    };
+
+    // ===== End Zorb Color Generation =====
+
     // Simple GraphQL WebSocket client implementation
     class GraphQLWebSocketClient {
       constructor(url) {
@@ -646,6 +817,11 @@
                     avatar {
                       small
                     }
+                    ... on GraphQLAccountProfile {
+                      publicWallet {
+                        walletAddress
+                      }
+                    }
                   }
                   comment
                   commentedAt
@@ -732,6 +908,7 @@
       const message = {
         handle: commentData.profile.handle,
         avatar: commentData.profile.avatar.small,
+        walletAddress: commentData.profile.publicWallet?.walletAddress,
         comment: commentData.comment,
         timestamp: Date.now(),
         element: null
@@ -755,6 +932,25 @@
       const usernameEl = document.createElement('span');
       usernameEl.className = 'username';
       usernameEl.textContent = message.handle;
+
+      // Apply Zorb gradient based on wallet address
+      if (message.walletAddress) {
+        try {
+          const zorbColors = gradientForAddress(message.walletAddress);
+          // Apply full 5-color gradient to username (reversed order)
+          const gradientString = `linear-gradient(90deg, ${zorbColors.reverse().join(', ')})`;
+          usernameEl.style.background = gradientString;
+          usernameEl.style.webkitBackgroundClip = 'text';
+          usernameEl.style.backgroundClip = 'text';
+          usernameEl.style.webkitTextFillColor = 'transparent';
+          usernameEl.style.color = 'transparent';
+          // Explicitly remove text-shadow that interferes with gradient
+          usernameEl.style.textShadow = 'none';
+        } catch (error) {
+          console.warn('Failed to generate Zorb color for', message.walletAddress, error);
+          // Fallback to default white if color generation fails
+        }
+      }
 
       const commentEl = document.createElement('span');
       commentEl.className = 'comment';
